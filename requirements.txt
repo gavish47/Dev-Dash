@@ -1,0 +1,5 @@
+Flask==2.2.3
+Flask-SQLAlchemy==3.0.2
+Pandas==1.5.3
+plyer==2.1.0
+schedule==1.1.0
