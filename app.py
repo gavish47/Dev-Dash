@@ -6,6 +6,8 @@ import os
 import time
 import threading
 import webbrowser
+import logging
+from sqlalchemy.exc import SQLAlchemyError
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -16,6 +18,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize the database
 db = SQLAlchemy(app)
+
+# Logging configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Database model for sessions
 class Session(db.Model):
@@ -52,14 +57,19 @@ def index():
 def start_session():
     project_name = request.form['project_name']
     notes = request.form.get('notes', '')
+    
+    if not project_name:
+        return "Project name is required", 400  # Ensure project name is provided
+    
     new_session = Session(project_name=project_name, notes=notes)
-
+    
     try:
         db.session.add(new_session)
         db.session.commit()
         return redirect(url_for('index'))
-    except:
-        return "There was an issue starting the session."
+    except SQLAlchemyError as e:
+        logging.error(f"Database error: {e}")
+        return "There was an issue starting the session.", 500
 
 # Route to end a session
 @app.route('/end', methods=['POST'])
@@ -69,17 +79,19 @@ def end_session():
 
     session.end_time = datetime.datetime.utcnow()
     session.duration = (session.end_time - session.start_time).total_seconds() / 60  # in minutes
-    git_commits_raw = request.form.get('git_commits', '0')
+    
     try:
-        session.git_commits = int(git_commits_raw or 0)
+        git_commits_raw = request.form.get('git_commits', '0')
+        session.git_commits = int(git_commits_raw) if git_commits_raw.isdigit() else 0
     except ValueError:
         session.git_commits = 0
 
     try:
         db.session.commit()
         return redirect(url_for('index'))
-    except:
-        return "There was an issue ending the session."
+    except SQLAlchemyError as e:
+        logging.error(f"Database error: {e}")
+        return "There was an issue ending the session.", 500
 
 # Route to refresh and view all sessions
 @app.route('/refresh')
@@ -95,7 +107,7 @@ def analytics():
     if not sessions:
         return render_template('analytics.html', no_data=True)
 
-    total_duration = sum(s.duration for s in sessions if s.duration)
+    total_duration = sum(s.duration for s in sessions if s.duration) or 0
     durations = [s.duration for s in sessions if s.duration is not None]
     avg_duration = total_duration / len(durations) if durations else 0
     total_commits = sum(s.git_commits for s in sessions if s.git_commits is not None)
@@ -113,20 +125,25 @@ def analytics():
     plt.figure(figsize=(8, 6))
     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
     plt.axis('equal')
+    
     chart_path = os.path.join('static', 'project_distribution.png')
-    plt.savefig(chart_path)
-    plt.close()
+    try:
+        plt.savefig(chart_path)
+        plt.close()
+    except Exception as e:
+        logging.error(f"Error generating pie chart: {e}")
+        chart_path = None
 
     return render_template(
         'analytics.html',
-        total_duration=total_duration or 0,
-        avg_duration=avg_duration or 0,
-        total_commits=total_commits or 0,
+        total_duration=total_duration,  # Ensure total_duration is always valid
+        avg_duration=avg_duration,
+        total_commits=total_commits,
         chart_path=chart_path,
         no_data=False,
-        project_names=labels if labels is not None else [],
-        project_times=sizes if sizes is not None else [],
-        durations=durations if durations is not None else []
+        project_names=labels,
+        project_times=sizes,
+        durations=durations
     )
 
 # Start the Flask server
